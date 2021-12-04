@@ -49,12 +49,12 @@ for (let x=0;x<=7;x++){
 }
 
 function printBoard() {
-  let img = new Image();
   for (let x = 0; x < 8; x++) {
     for (let y = 0; y < 8; y++) {
       path = getImage(x,y)
       console.log(path)
       if (path!= null){
+        var img = new Image();
         img.onload = function(){
           console.log(img.src)
           ctx.drawImage(img, x*100+25, y*100+25, 50, 50);
