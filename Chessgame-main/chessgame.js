@@ -11,7 +11,6 @@ let check = false;
 let turns = 0;
 let revealcheck = false;
 let colour = whitepieces;
-const canvas = document.getElementById("board")
 var ctx = canvas.getContext("2d")
 
 let horsemoves = [
@@ -32,27 +31,11 @@ for (let i = 0; i < 8; i++) {
   }
 }
 
-ctx.fillStyle = "grey"
-ctx.fillRect(0,0,810,810)
-for (let x=0;x<=7;x++){
-    for (let y=0;y<=7;y++){
-        a = 100*x
-        b = 100*y
-        if ((x+y)%2==0){
-            ctx.fillStyle = "white"
-        }
-        else{
-            ctx.fillStyle = "black"
-        }
-        ctx.fillRect(a+5,b+5,95,95)
-    }
-}
 
 function printBoard() {
   for (let x = 0; x < 8; x++) {
     for (let y = 0; y < 8; y++) {
       path = getImage(x,y)
-      console.log(path)
       if (path!= null){
         var img = new Image();
         img.onload = function(){
