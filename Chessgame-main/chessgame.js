@@ -11,7 +11,17 @@ let check = false;
 let turns = 0;
 let revealcheck = false;
 let colour = whitepieces;
-var ctx = canvas.getContext("2d")
+const canvas = document.getElementById("board")
+const ctx = canvas.getContext("2d")
+let pieceImages = {};
+let lastx = 0;
+let lasty = 0;
+const offset = 100;
+let selected = false;
+let selectedx;
+let selectedy;
+let boardrect = new Path2D();
+boardrect.rect(offset,offset,805,805)
 
 let horsemoves = [
   { x: 2, y: 1 },
@@ -23,30 +33,120 @@ let horsemoves = [
   { x: -1, y: 2 },
   { x: -1, y: -2 },];
 
-board = new Array(8)// does not work if put in a function, so must be built at the start
-for (let i = 0; i < 8; i++) {
-  board[i] = new Array(8);
-  for (let j = 0; j < 8; j++) {
-    board[i][j] = ' ';
+function backBoard(){
+  ctx.fillStyle = "grey"
+  ctx.fillRect(offset,offset,805,805)
+  for (let x=0;x<=7;x++){
+      for (let y=0;y<=7;y++){
+          a = 100*x
+          b = 100*y
+          if ((x+y)%2==0){
+              ctx.fillStyle = "white"
+          }
+          else{
+              ctx.fillStyle = "black"
+          }
+          ctx.fillRect(a+5+offset,b+5+offset,95,95)
+      }
   }
 }
 
+let positions = new Array(8);
+board = new Array(8)// does not work if put in a function, so must be built at the start
+for (let i = 0; i < 8; i++) {
+  board[i] = new Array(8);
+  positions[i] = new Array(8);
+  for (let j = 0; j < 8; j++) {
+    board[i][j] = ' ';
+    positions[i][j] = new Path2D();
+    positions[i][j].rect(100*i + offset, 100*j + offset,100,100);
+  }
+}
 
 function printBoard() {
   for (let x = 0; x < 8; x++) {
     for (let y = 0; y < 8; y++) {
-      path = getImage(x,y)
-      if (path!= null){
-        var img = new Image();
-        img.onload = function(){
-          console.log(img.src)
-          ctx.drawImage(img, x*100+25, y*100+25, 50, 50);
+      path = getImage(x, y)
+      console.log(path)
+      if (path != null) {
+        let img = pieceImages[path];
+        ctx.drawImage(img, x * 100 +10 + offset, y * 100 +10 + offset, 80, 80);
        }
-        img.src = "path"
       }
     }
   }
-}
+
+  canvas.addEventListener('mousemove',
+  function(event) {
+    for (let x = 0; x < 8; x++) {
+      for (let y = 0; y < 8; y++) {
+        if (ctx.isPointInPath(positions[x][y],event.offsetX,event.offsetY)) {
+          ctx.strokeStyle = 'yellow';
+          ctx.strokeRect(100*x+4 + offset,100*y+4 + offset,96,96)
+        }
+        else{
+          ctx.strokeStyle = 'grey';
+          ctx.strokeRect(100*x+4+ offset,100*y+4+offset,96,96)
+        }
+      }
+    }
+  });
+
+  canvas.addEventListener('click', 
+  function(event){
+    if((lastx+lasty)%2 == 0){
+      ctx.fillStyle = 'white';
+      ctx.fillRect(lastx*100+5+offset,lasty*100+5+offset,95,95)
+      path = getImage(lastx, lasty)
+      if (path != null) {
+      let img = pieceImages[path];
+      ctx.drawImage(img, lastx * 100 +10+offset, lasty * 100 +10+offset, 80, 80);
+      }
+    }
+    else{
+      ctx.fillStyle = 'black';
+      ctx.fillRect(lastx*100+5+offset,lasty*100+5+offset,95,95)
+      path = getImage(lastx, lasty)
+      if (path != null) {
+        let img = pieceImages[path];
+        ctx.drawImage(img, lastx * 100 +10+offset, lasty * 100 +10+offset, 80, 80);
+      }
+    }
+    for (let x = 0; x < 8; x++) {
+      for (let y = 0; y < 8; y++) {
+        if(ctx.isPointInPath(positions[x][y],event.offsetX,event.offsetY)){
+          console.log("you clicked", x, y)
+          if(selected == true){
+            if(movePiece(selectedx, selectedy, x, y)){
+            backBoard()
+            printBoard()
+            }
+            selected = false
+          }
+          else{
+            selected = true
+            console.log('slected',selected)
+            selectedx = x
+            selectedy = y
+          }
+          lastx = x
+          lasty = y
+          ctx.fillStyle = 'yellow';
+          ctx.fillRect(x*100+5+offset,y*100+5+offset,95,95)
+          path = getImage(x,y)
+          if (path != null) {
+            let img = pieceImages[path];
+            ctx.drawImage(img, x * 100 +10+offset, y * 100 +10+offset, 80, 80);
+            }
+      }
+      if(ctx.isPointInPath(boardrect,event.offsetX,event.offsetY) == false){
+        console.log("click off board")
+        selected = false
+      }
+    }
+  }
+});
+  
 
 function getImage(x,y){
   console.log(x,y)
@@ -156,26 +256,29 @@ function whatPiece(x, y) {
   }
 }
 
-function movePiece() {
-  while (validmove == false) {
-    printBoard()
-    console.log("What is your move");
-    var piece = prompt("What piece?");
-    var moves = prompt("Moving to?");
-    console.clear()
-    if (piece == 'clear' || moves == 'clear') {
-      clearboard = true //clears the whole board and resets it all
-      validmove = true
-    }
-    else {
-      if (piece.length != 2 || moves.length != 2) {
-        validmove = false;
-        console.log("Invalid input")
-      }
-      x = alphabet.indexOf(piece.charAt(0).toLowerCase());//converts letter to number
-      y = piece.charAt(1) - 1; //arrays start from 0
-      newx = alphabet.indexOf(moves.charAt(0).toLowerCase());
-      newy = moves.charAt(1) - 1;
+function movePiece(x, y, newx, newy) {
+  validmove = true
+  //while (validmove == false) {
+    //printBoard()
+    //console.log("What is your move");
+    //var piece = prompt("What piece?");
+    //var moves = prompt("Moving to?");
+    //console.clear()
+    //if (piece == 'clear' || moves == 'clear') {
+      //clearboard = true //clears the whole board and resets it all
+      //validmove = true
+    //}
+    //else {
+      //if (piece.length != 2 || moves.length != 2) {
+        //validmove = false;
+        //console.log("Invalid input")
+     // }
+      //x = alphabet.indexOf(piece.charAt(0).toLowerCase());//converts letter to number
+      //y = piece.charAt(1) - 1; //arrays start from 0
+      //newx = alphabet.indexOf(moves.charAt(0).toLowerCase());
+      //newy = moves.charAt(1) - 1;
+      piece = board[x][y]
+      moves = board[newx][newy]
       if (y <= -1 || y >= 8 || newy <= -1 || newy >= 8 || x == -1 || newx == -1) {
         validmove = false
         console.log("Invalid Move 1")
@@ -320,9 +423,7 @@ function movePiece() {
           }
         }
       }
-    }
-  }
-  validmove = false
+  return validmove
 }
 
 function stateChange(colour, value, change, moves) {
@@ -701,12 +802,50 @@ function checkifCheck(colour, xcoord, ycoord) {
         board[x][y] = ' '
       }
     }
+
     fillBoard(whitepieces)
+    //console.log(whitepieces)
     fillBoard(blackpieces)
     clearboard = false
-    printBoard()
-  //}
-  //movePiece()
-}
-
-
+  
+    pieceImages["black_bishop"] = new Image();
+    pieceImages["black_bishop"].src = "./pieces/black_bishop.png";
+  
+    pieceImages["black_king"] = new Image();
+    pieceImages["black_king"].src = "./pieces/black_king.png";
+  
+    pieceImages["black_knight"] = new Image();
+    pieceImages["black_knight"].src = "./pieces/black_knight.png";
+  
+    pieceImages["black_pawn"] = new Image();
+    pieceImages["black_pawn"].src = "./pieces/black_pawn.png";
+  
+    pieceImages["black_queen"] = new Image();
+    pieceImages["black_queen"].src = "./pieces/black_queen.png";
+  
+    pieceImages["black_rook"] = new Image();
+    pieceImages["black_rook"].src = "./pieces/black_rook.png";
+  
+    pieceImages["white_bishop"] = new Image();
+    pieceImages["white_bishop"].src = "./pieces/white_bishop.png";
+  
+    pieceImages["white_king"] = new Image();
+    pieceImages["white_king"].src = "./pieces/white_king.png";
+  
+    pieceImages["white_knight"] = new Image();
+    pieceImages["white_knight"].src = "./pieces/white_knight.png";
+  
+    pieceImages["white_pawn"] = new Image();
+    pieceImages["white_pawn"].src = "./pieces/white_pawn.png";
+  
+    pieceImages["white_queen"] = new Image();
+    pieceImages["white_queen"].src = "./pieces/white_queen.png";
+  
+    pieceImages["white_rook"] = new Image();
+    pieceImages["white_rook"].src = "./pieces/white_rook.png";
+  
+  
+    setTimeout(backBoard, printBoard,  100);
+    //}
+    //movePiece()
+  }
