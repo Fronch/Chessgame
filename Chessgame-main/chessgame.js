@@ -22,6 +22,7 @@ let selectedx;
 let selectedy;
 let boardrect = new Path2D();
 boardrect.rect(offset,offset,805,805)
+let changedPawns = 9
 
 let horsemoves = [
   { x: 2, y: 1 },
@@ -67,7 +68,7 @@ function printBoard() {
   for (let x = 0; x < 8; x++) {
     for (let y = 0; y < 8; y++) {
       path = getImage(x, y)
-      console.log(path)
+      //console.log(path)
       if (path != null) {
         let img = pieceImages[path];
         ctx.drawImage(img, x * 100 +10 + offset, y * 100 +10 + offset, 80, 80);
@@ -125,7 +126,7 @@ function printBoard() {
           }
           else{
             selected = true
-            console.log('slected',selected)
+            //console.log('slected',selected)
             selectedx = x
             selectedy = y
           }
@@ -149,14 +150,14 @@ function printBoard() {
   
 
 function getImage(x,y){
-  console.log(x,y)
+  //console.log(x,y)
   let start = null
   letter = board[x][y].charAt(0)
   if (letter == ' '){
     return null
   }
   colour = board[x][y].charAt(2)
-  console.log(colour)
+  //console.log(colour)
   if (colour == 'b'){
     start = "black"
   }
@@ -258,25 +259,6 @@ function whatPiece(x, y) {
 
 function movePiece(x, y, newx, newy) {
   validmove = true
-  //while (validmove == false) {
-    //printBoard()
-    //console.log("What is your move");
-    //var piece = prompt("What piece?");
-    //var moves = prompt("Moving to?");
-    //console.clear()
-    //if (piece == 'clear' || moves == 'clear') {
-      //clearboard = true //clears the whole board and resets it all
-      //validmove = true
-    //}
-    //else {
-      //if (piece.length != 2 || moves.length != 2) {
-        //validmove = false;
-        //console.log("Invalid input")
-     // }
-      //x = alphabet.indexOf(piece.charAt(0).toLowerCase());//converts letter to number
-      //y = piece.charAt(1) - 1; //arrays start from 0
-      //newx = alphabet.indexOf(moves.charAt(0).toLowerCase());
-      //newy = moves.charAt(1) - 1;
       piece = board[x][y]
       moves = board[newx][newy]
       if (y <= -1 || y >= 8 || newy <= -1 || newy >= 8 || x == -1 || newx == -1) {
@@ -450,14 +432,54 @@ function stateChange(colour, value, change, moves) {
 
 function updatePosition(colour, value, newx, newy) {
   count = 0
+  let tempcount = 0
   while (count <= 15) {
     if (colour[count].type == value) {
       colour[count].coordx = newx
       colour[count].coordy = newy
       console.log("found and changed")
-      //console.log(colour[count])
+      tempcount = count
+      count =16
     }
     count += 1
+  }
+  if(board[newx][newy].charAt(0) == 'p'){
+    if(colour == whitepieces){
+      console.log(board[newx][newy] + "AAAAAAAAAAAAAAAAAAAAA")
+      if(newy == 7){
+        console.log("PAWN AT END")
+        let validinput = false
+        while(validinput == false){
+          newpieces = prompt("what do you want your pawn to turn into")
+          if(newpieces.length == 1){
+            validinput = true
+            newcode = newpieces
+            newcode += changedPawns.toString()
+            changedPawns += 1
+            newcode += board[newx][newy].charAt(2)
+            colour[tempcount].type = newcode
+            board[newx][newy] = newcode
+        }
+      }
+    }
+  }
+    if(colour == blackpieces){
+      if(newy == 0){
+        console.log("PAWN AT END")
+        let validinput = false
+        while(validinput == false){
+          newpieces = prompt("what do you want your pawn to turn into")
+          if(newpieces.length == 1){
+            validinput = true
+            newcode = newpieces
+            newcode += board[x][y].charAt(1)
+            newcode += board[x][y].charAt(2)
+            colour[tempcount].type = newcode
+            board[x][y] = newcode
+          }
+        }
+      }
+    }
   }
 }
 
@@ -477,7 +499,8 @@ function checkPieceRule(piece, x, y, newx, newy, colour) {
   }
   console.log(xchange, ychange)
   if (piece == "knight") {
-    if ((Math.abs(xchange) == 2 && Math.abs(ychange) == 1) || (Math.abs(xchange) == 1) && Math.abs(ychange) == 2) {
+    if ((Math.abs(xchange) == 2 && Math.abs(ychange) == 1) 
+    || (Math.abs(xchange) == 1) && Math.abs(ychange) == 2) {
       return true
     }
     else {
@@ -522,8 +545,9 @@ function checkPieceRule(piece, x, y, newx, newy, colour) {
   }
 
   if (piece == "pawn") {
+    console.log("pawn")
     if (colour == whitepieces) {
-      if (y = 1) {
+      if (y == 1) {
         if (xchange == 0 && (ychange) == 2) {
           if (board[newx][newy] == ' ' && board[newx][newy - 1] == ' ') {
             console.log("True")
@@ -553,7 +577,7 @@ function checkPieceRule(piece, x, y, newx, newy, colour) {
     }
 
     if (colour == blackpieces) {
-      if (y = 6) {
+      if (y == 6) {
         if (xchange == 0 && ychange == -2) {
           if (board[newx][newy] == ' ' && board[newx][newy + 1]) {
             stateChange(blackpieces, board[x][y], false, true)
@@ -705,7 +729,7 @@ function checkifCheck(colour, xcoord, ycoord) {
     console.log("x is" + posx)
     while (!safehorizontal && xcoord + count <= 7 && xcoord + count >= 0) { //checks if king is in check by a rook or queen
       console.log("valid  " + count)
-      //console.log(board[xcoord + count][ycoord].charAt(0))
+      console.log(board[xcoord + count][ycoord].charAt(0))
       if (board[xcoord + count][ycoord].charAt(0) == 'r' ||
         board[xcoord + count][ycoord].charAt(0) == 'Q' &&
         board[xcoord + count][ycoord].charAt(2) == letter2) {
@@ -733,7 +757,7 @@ function checkifCheck(colour, xcoord, ycoord) {
     }
   }
 
-  console.log("Checking for bishop check")
+  console.log("Checking for bishop/queen check")
   for(posy=-1;posy<2;posy+=2){
     console.log(xcoord, ycoord)
     let safeBLeft = false
@@ -745,10 +769,13 @@ function checkifCheck(colour, xcoord, ycoord) {
     while(!safeBLeft && xcoord + count <= 7 && xcoord + count >= 0
     && ycoord + count <= 7 && ycoord + count >= 0 ){
       console.log(board[xcoord + count][ycoord + count], "piece")
-      if (board[xcoord + count][ycoord + count].charAt(0) == 'b' &&
-      board[xcoord+ count][ycoord + count].charAt(2) == letter2) {
+      if(board[xcoord+ count][ycoord + count].charAt(2) == letter2){
+
+      if (board[xcoord + count][ycoord + count].charAt(0) == 'b' || 
+      board[xcoord + count][ycoord + count].charAt(0) == 'Q') {
           return true
       }
+    }
       if(board[xcoord + count][ycoord + count] != ' '){
         safeBLeft = true
       }
@@ -778,12 +805,18 @@ function checkifCheck(colour, xcoord, ycoord) {
   if(xcoord + 1 <= 7 && xcoord + 1 >= 0
   && xcoord - 1 <= 7 && xcoord - 1 >= 0
   && ycoord + countP <= 7 && ycoord + countP >= 0 ){
-    console.log("correct")
-    if(board[xcoord-1][ycoord + countP].charAt(2) == letter2
-    || board[xcoord+1][ycoord + countP].charAt(2) == letter2){
+    //console.log("correct")
+    if(board[xcoord-1][ycoord + countP].charAt(2) == letter2 && 
+      board[xcoord-1][ycoord + countP].charAt(0) == 'p'){
+      console.log("pawncheck")
       return true
       }
+      if(board[xcoord+1][ycoord + countP].charAt(2) == letter2 && 
+      board[xcoord+1][ycoord + countP].charAt(0) == 'p'){
+        console.log("pawncheck")
+        return true
     }
+  }
 
   console.log("no check")
   return false

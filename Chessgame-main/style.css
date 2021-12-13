@@ -1,6 +1,9 @@
+html{
+    overflow-x: hidden;
+}
 body {
     font-family: 'Oswald', sans-serif;
-    background-image: -moz-radial-gradient(#1a1a1a,#111111);
+    background-color: #575757;
 }
 
 .header {
