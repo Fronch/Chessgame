@@ -16,17 +16,24 @@
 <body>
     <div class="header">
         <h1>Online Chess</h1>
-        <div class="row home justify-content-centre px-4 p-1">
-            <div class="buttons">
-               Options -
+        <div class="row home jsustify-content-centre px-4 p-1">
+            <div class="options">
+               Options - 
+               <input type="checkbox" id="possiblemovesbox" name="possibleMoves">
+                <label for="possiblemovesbox"> Show possible moves</label>
+                <input type="checkbox" id="rulesbox" name="rulestate" checked>
+                <label for="rulesbox"> Rules</label>
+            </div>
+            <div class = 'buttons'>                
+                <button onclick = "clearboard()"> Reset </button>
             </div>
         </div>
     </div>
     <div class="board">
         <div class="chessboard">
-            <canvas id = "board" width=1005 height=1005></canvas>
+            <canvas id = "board" width=1305 height=1305></canvas>
         </div>
-        <script src = "chessgame.js"> </script>
+        <script src = "chessgame.js"></script>
         <body onload = 'printBoard()'>
     </div>
 </body>

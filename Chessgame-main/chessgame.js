@@ -1,4 +1,5 @@
 let board;
+let start = true
 let whitepieces = [];
 let blackpieces = [];
 let count = -1;
@@ -6,7 +7,7 @@ let alphabet = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
 let checkmate = false;
 let validmove = false;
 let clearspace = true;
-let clearboard = true;
+let checking = true;
 let check = false;
 let turns = 0;
 let revealcheck = false;
@@ -16,13 +17,30 @@ const ctx = canvas.getContext("2d")
 let pieceImages = {};
 let lastx = 0;
 let lasty = 0;
-const offset = 100;
+const offset = 250;
+const offsety = 40
 let selected = false;
 let selectedx;
 let selectedy;
 let boardrect = new Path2D();
-boardrect.rect(offset,offset,805,805)
-let changedPawns = 9
+boardrect.rect(offset,offsety,805,805)
+let changedPawns = 9;
+let piecechoiceimg = ["Queen","knight","rook","bishop"];
+let piecechoice = new Array(1);
+let choosing = false;
+let savedx;
+let savedy;
+let savedcolour;
+let possibleMoves = false
+let rules = true
+
+let loadedImages = 0;
+
+
+var checkbox = document.getElementById('possiblemovesbox');
+if (checkbox.checked) {
+   console.log('test');
+}
 
 let horsemoves = [
   { x: 2, y: 1 },
@@ -34,20 +52,20 @@ let horsemoves = [
   { x: -1, y: 2 },
   { x: -1, y: -2 },];
 
-function backBoard(){
-  ctx.fillStyle = "grey"
-  ctx.fillRect(offset,offset,805,805)
+function backBoard(){//background for the board, without pieces
+  ctx.fillStyle = "#5b5a5a"
+  ctx.fillRect(offset,offsety,805,805)//offset constants to allow easy formatting while designing
   for (let x=0;x<=7;x++){
       for (let y=0;y<=7;y++){
-          a = 100*x
+          a = 100*x//100 is the pixel size of each square
           b = 100*y
-          if ((x+y)%2==0){
+          if ((x+y)%2==0){//alternates with mod 2, to alternate b&w
               ctx.fillStyle = "white"
           }
           else{
               ctx.fillStyle = "black"
           }
-          ctx.fillRect(a+5+offset,b+5+offset,95,95)
+          ctx.fillRect(a+5+offset,b+5+offsety,95,95)
       }
   }
 }
@@ -59,19 +77,42 @@ for (let i = 0; i < 8; i++) {
   positions[i] = new Array(8);
   for (let j = 0; j < 8; j++) {
     board[i][j] = ' ';
-    positions[i][j] = new Path2D();
-    positions[i][j].rect(100*i + offset, 100*j + offset,100,100);
+    positions[i][j] = new Path2D();//paths used to detect where on the board was clicked
+    positions[i][j].rect(100*i + offset, 100*j + offsety,100,100);
   }
+}
+
+function printChooser(colour){ 
+let start = null
+if (colour == 'b'){
+  start = "black_"
+}
+if (colour == 'w'){
+  start = "white_"
+}
+ctx.fillStyle = "#5b5a5a"
+ctx.fillRect(offset + 906, offsety, 120, 405)//offsets to the right of the board
+ctx.lineWidth = 4
+ctx.strokeStyle = 'black'
+ctx.strokeRect(offset + 906, offsety, 120, 405)
+ctx.lineWidth = 1
+  for (let i =0; i<4;i++){
+    piecechoice[i] = new Path2D();//paths to determine where clicked
+    piecechoice[i].rect(offset + 925, offsety +i*100, 80, 80)
+    path = start+piecechoiceimg[i]
+    let img = pieceImages[path];//finds the image code
+    ctx.drawImage(img, offset + 925, offsety + 10 + i*100, 80, 80)//draws each image
+  }
+  choosing = true
 }
 
 function printBoard() {
   for (let x = 0; x < 8; x++) {
     for (let y = 0; y < 8; y++) {
       path = getImage(x, y)
-      //console.log(path)
       if (path != null) {
-        let img = pieceImages[path];
-        ctx.drawImage(img, x * 100 +10 + offset, y * 100 +10 + offset, 80, 80);
+        let img = pieceImages[path];//finds image code from array
+        ctx.drawImage(img, x * 100 +10 + offset, y * 100 +10 + offsety, 80, 80);
        }
       }
     }
@@ -80,84 +121,142 @@ function printBoard() {
   canvas.addEventListener('mousemove',
   function(event) {
     for (let x = 0; x < 8; x++) {
-      for (let y = 0; y < 8; y++) {
+      for (let y = 0; y < 8; y++) {//when mouse moved, checks all 64 squares to see if mouse is in square
         if (ctx.isPointInPath(positions[x][y],event.offsetX,event.offsetY)) {
-          ctx.strokeStyle = 'yellow';
-          ctx.strokeRect(100*x+4 + offset,100*y+4 + offset,96,96)
+          ctx.strokeStyle = 'yellow';//if mouse in square, selected is highlighted with a yellow border
+          ctx.strokeRect(100*x+4 + offset,100*y+4 + offsety,97,97)
         }
         else{
-          ctx.strokeStyle = 'grey';
-          ctx.strokeRect(100*x+4+ offset,100*y+4+offset,96,96)
+          ctx.strokeStyle = '#5b5a5a';//if mouse not in square, grey border is drawn, and will cover any previous yellow one
+          ctx.strokeRect(100*x+4+ offset,100*y+4+offsety,97,97)
+        }
+      }
+    }
+    if(choosing){// if pawn being chosen, this border effect also happens to the select bar
+      for(let x=0;x<4;x++){
+        if (ctx.isPointInPath(piecechoice[x],event.offsetX,event.offsetY)){
+          ctx.strokeStyle = 'yellow';
+          ctx.strokeRect(918 + offset,100*x + offsety+4,96,96)
+        }
+        else{
+          ctx.strokeStyle = '#5b5a5a'
+          ctx.strokeRect(918 + offset,100*x + offsety+4,96,96)
         }
       }
     }
   });
 
   canvas.addEventListener('click', 
-  function(event){
+  function(event){//when clicked
+    var checkbox = document.getElementById('possiblemovesbox');
+    if (checkbox.checked) {
+    possibleMoves = true
+    }
+    else{
+      possibleMoves = false
+    }
+    var checkbox = document.getElementById('rulesbox');
+    if (checkbox.checked) {
+      rules = true
+    }
+    else{
+      rules = false
+    }
+    if(possibleMoves){
+      backBoard()
+      printBoard()
+    }
+    if(!choosing){
     if((lastx+lasty)%2 == 0){
-      ctx.fillStyle = 'white';
-      ctx.fillRect(lastx*100+5+offset,lasty*100+5+offset,95,95)
+      ctx.fillStyle = 'white';//replaces last click location with origional colour and piece
+      ctx.fillRect(lastx*100+5+offset,lasty*100+5+offsety,95,95)
       path = getImage(lastx, lasty)
       if (path != null) {
       let img = pieceImages[path];
-      ctx.drawImage(img, lastx * 100 +10+offset, lasty * 100 +10+offset, 80, 80);
+      ctx.drawImage(img, lastx * 100 +10+offset, lasty * 100 +10+offsety, 80, 80);
       }
     }
     else{
-      ctx.fillStyle = 'black';
-      ctx.fillRect(lastx*100+5+offset,lasty*100+5+offset,95,95)
+      ctx.fillStyle = 'black';//replaces last click location with origional colour and piece
+      ctx.fillRect(lastx*100+5+offset,lasty*100+5+offsety,95,95)
       path = getImage(lastx, lasty)
       if (path != null) {
         let img = pieceImages[path];
-        ctx.drawImage(img, lastx * 100 +10+offset, lasty * 100 +10+offset, 80, 80);
+        ctx.drawImage(img, lastx * 100 +10+offset, lasty * 100 +10+offsety, 80, 80);
       }
     }
     for (let x = 0; x < 8; x++) {
-      for (let y = 0; y < 8; y++) {
+      for (let y = 0; y < 8; y++) {//on click, checks all 64 squares to determine which one has been clocked
         if(ctx.isPointInPath(positions[x][y],event.offsetX,event.offsetY)){
           console.log("you clicked", x, y)
-          if(selected == true){
-            if(movePiece(selectedx, selectedy, x, y)){
+          if(selected == true){//selected means a piece is selected, and the next click is where its moving to
+            if(movePiece(selectedx, selectedy, x, y)){//runs the move piece function, if its a valid move, returns true, and board is reprinted
             backBoard()
             printBoard()
-            }
             selected = false
+            }
+            else{
+              selected = true
+            }
+            if(selectedx == x && selectedy == y){
+              selected = true
+            }
           }
           else{
             selected = true
-            //console.log('slected',selected)
-            selectedx = x
+          }
+          if(selected == true){
+            selected = true
+            selectedx = x//saves last click position
             selectedy = y
+            if(board[x][y] == ' '){
+              selected = false;//deselects if a piece isnt clicked
+            }
+            else{
+              if(possibleMoves){//runs the function to highlight possible moves if the setting is on
+                findPossible(whatPiece(x,y), board[x][y].charAt(2), x, y)
+              }
+            }
           }
           lastx = x
           lasty = y
-          ctx.fillStyle = 'yellow';
-          ctx.fillRect(x*100+5+offset,y*100+5+offset,95,95)
+          ctx.fillStyle = 'yellow';//fills in the selected square with yellow
+          ctx.fillRect(x*100+5+offset,y*100+5+offsety,95,95)
           path = getImage(x,y)
           if (path != null) {
-            let img = pieceImages[path];
-            ctx.drawImage(img, x * 100 +10+offset, y * 100 +10+offset, 80, 80);
+            let img = pieceImages[path];//if theres an image in the selected square, its reprinted over the yellow
+            ctx.drawImage(img, x * 100 +10+offset, y * 100 +10+offsety, 80, 80);
             }
-      }
-      if(ctx.isPointInPath(boardrect,event.offsetX,event.offsetY) == false){
-        console.log("click off board")
-        selected = false
+        }
+
+        }
       }
     }
-  }
-});
+    if(ctx.isPointInPath(boardrect,event.offsetX,event.offsetY) == false){
+      console.log("click off board")
+      console.log(blackpieces, whitepieces)
+      selected = false//click off board removes current selection
+    }
+      if(choosing){//if pawn is being chosen, only the sidebar can be selected
+        for(let x=0;x<4;x++){
+          if (ctx.isPointInPath(piecechoice[x],event.offsetX,event.offsetY)){
+            ctx.clearRect(offset + 900, offsety-5, 130, 415)//once selected, its removed
+            selected = false
+            choosing = false
+            pawnend(piecechoiceimg[x].charAt(0),savedx,savedy)//runs function to apply selectuion
+          }
+        }
+      }
+  });
   
 
 function getImage(x,y){
-  //console.log(x,y)
   let start = null
   letter = board[x][y].charAt(0)
   if (letter == ' '){
     return null
   }
-  colour = board[x][y].charAt(2)
-  //console.log(colour)
+  colour = board[x][y].charAt(2) // image names follow the format (colour_piece)
   if (colour == 'b'){
     start = "black"
   }
@@ -177,12 +276,13 @@ function getImage(x,y){
     return (start+"_bishop")
   }
   if (letter == 'K') {
-    return (start+"_king")
+    return (start+"_King")
   }
   if (letter == 'Q') {
-    return (start+"_queen")
+    return (start+"_Queen")
   }
 }
+
 
 //a base function to push an array of records containing each piece 
 function addPieces(colourpieces, yCoord, name, xCoord, num) {
@@ -223,12 +323,7 @@ function addAll(colour, yposition, pawnyposition) {
 }
 //adds every piece to the board array
 function fillBoard(pieces) {
-  for (i = 0; x < 8; x++) {
-    for (j = 0; x < 8; x++) {
-      board[x][y] = ' ';
-    }
-  }
-  for (x = 0; x < 16; x++) {
+  for (let x = 0; x < 16; x++) {
     xCoord = pieces[x].coordx; //takes coordinate from array
     yCoord = pieces[x].coordy;
     letter = pieces[x].type;
@@ -250,10 +345,10 @@ function whatPiece(x, y) {
     return "bishop"
   }
   if (letter == 'K') {
-    return "king"
+    return "King"
   }
   if (letter == 'Q') {
-    return "queen"
+    return "Queen"
   }
 }
 
@@ -290,24 +385,33 @@ function movePiece(x, y, newx, newy) {
               colour = blackpieces
             }
               if (checkPieceRule(whatPiece(x, y), x, y, newx, newy, colour)) {
+                console.log("rules checked")
                 validmove = true
                 if(check == true){
                   temp1 = board[x][y]
                   temp2 = board[newx][newy]
                   board[newx][newy] = temp1
                   board[x][y] = ' '
-                  if (turns % 2 == 1) {
-                    if (checkifCheck(blackpieces, blackpieces[14].coordx, blackpieces[14].coordy)) {
-                      console.log("You are still in check")
-                      validmove = false
+                  if(whatPiece(newx,newy) != 'King'){
+                    if (turns % 2 == 1) {
+                      if (checkifCheck(blackpieces, blackpieces[14].coordx, blackpieces[14].coordy)) {
+                        console.log("You are still in check")
+                        validmove = false
+                      }
                     }
+                    if (turns % 2 == 0) {
+                      if (checkifCheck(whitepieces, whitepieces[14].coordx, whitepieces[14].coordy)) {
+                        console.log("You are still in check")
+                        validmove = false
+                      }
                   }
-                  if (turns % 2 == 0) {
-                    if (checkifCheck(whitepieces, whitepieces[14].coordx, whitepieces[14].coordy)) {
-                      console.log("You are still in check")
-                      validmove = false
-                    }
-                  }
+                }
+                else{
+                  if(checkifCheck(colour, newx, newy)){
+                    console.log("You are still in check")
+                    validmove = false
+                }
+              }
                   board[x][y] = temp1
                   board[newx][newy] = temp2
                 }
@@ -317,7 +421,7 @@ function movePiece(x, y, newx, newy) {
                   board[newx][newy] = temp1
                   board[x][y] = ' '
                   console.log("moving near king")
-                  if (turns % 2 == 1) {
+                  if (turns % 2 == 1 && value.charAt(0) != 'K') {
                     if (checkifCheck(blackpieces, blackpieces[14].coordx, blackpieces[14].coordy)) {
                       console.log("You can't move into check!")
                       validmove = false
@@ -331,20 +435,21 @@ function movePiece(x, y, newx, newy) {
                   }
                   board[x][y] = temp1
                   board[newx][newy] = temp2
+                  revealcheck = false
                 }
                 if(value.charAt(0)== 'K'){//checks to see if king is moving into check
                   temp = board[x][y]
                   board[x][y] = ' '
                   if (turns % 2 == 1) {
                     if (checkifCheck(blackpieces, newx, newy)) {
-                      console.log("You can't move into check!")
+                      console.log("You can't move into check!!")
                       validmove = false
                       
                     }
                   }
                   if (turns % 2 == 0) {
                     if (checkifCheck(whitepieces, newx, newy)) {
-                      console.log("You can't move into check!")
+                      console.log("You can't move into check!!")
                       validmove = false
                     }
                   }
@@ -367,11 +472,11 @@ function movePiece(x, y, newx, newy) {
                   }
                   if (value != ' ') {//if a piece is being taken
                     if (movingto.charAt(2) == 'w') {
-                      stateChange(whitepieces, value, true)
+                      stateChange(whitepieces, moves, true)
                       console.log("piece taken")
                     }
                     if (movingto.charAt(2) == 'b') {
-                      stateChange(blackpieces, value, true)
+                      stateChange(blackpieces, moves, true)
                       console.log("Piece taken")
                     }
                   }
@@ -409,6 +514,10 @@ function movePiece(x, y, newx, newy) {
 }
 
 function stateChange(colour, value, change, moves) {
+  if(checking){
+    return true
+  }
+  else{
   count = 0
   while (count <= 15) {
     if (colour[count].type == value) { //finds piece being taken, to change its state in the array
@@ -429,10 +538,10 @@ function stateChange(colour, value, change, moves) {
     }
   }
 }
+}
 
 function updatePosition(colour, value, newx, newy) {
-  count = 0
-  let tempcount = 0
+  let count = 0
   while (count <= 15) {
     if (colour[count].type == value) {
       colour[count].coordx = newx
@@ -445,58 +554,83 @@ function updatePosition(colour, value, newx, newy) {
   }
   if(board[newx][newy].charAt(0) == 'p'){
     if(colour == whitepieces){
-      console.log(board[newx][newy] + "AAAAAAAAAAAAAAAAAAAAA")
       if(newy == 7){
-        console.log("PAWN AT END")
-        let validinput = false
-        while(validinput == false){
-          newpieces = prompt("what do you want your pawn to turn into")
-          if(newpieces.length == 1){
-            validinput = true
-            newcode = newpieces
-            newcode += changedPawns.toString()
-            changedPawns += 1
-            newcode += board[newx][newy].charAt(2)
-            colour[tempcount].type = newcode
-            board[newx][newy] = newcode
-        }
+        savedx = newx
+        savedy = newy
+        savedcolour = blackpieces
+        console.log(savedx, savedy, savedcolour)
+        printChooser('w')
       }
     }
-  }
     if(colour == blackpieces){
       if(newy == 0){
-        console.log("PAWN AT END")
-        let validinput = false
-        while(validinput == false){
-          newpieces = prompt("what do you want your pawn to turn into")
-          if(newpieces.length == 1){
-            validinput = true
-            newcode = newpieces
-            newcode += board[x][y].charAt(1)
-            newcode += board[x][y].charAt(2)
-            colour[tempcount].type = newcode
-            board[x][y] = newcode
-          }
-        }
+        savedx = newx
+        savedy = newy
+        savedcolour = blackpieces
+        console.log(savedx, savedy, savedcolour)
+        printChooser('b')
+  //       console.log("PAWN AT END")
+  //       let validinput = false
+  //       while(validinput == false){
+  //         newpieces = prompt("what do you want your pawn to turn into")
+  //         if(newpieces.length == 1){
+  //           validinput = true
+  //           newcode = newpieces
+  //           newcode += board[x][y].charAt(1)
+  //           newcode += board[x][y].charAt(2)
+  //           colour[tempcount].type = newcode
+  //           board[x][y] = newcode
+  //         }
+  //       }
+  //     }
+  //   }
+  // }
       }
     }
   }
 }
 
+
+function pawnend(piece,x,y){
+  newcode = piece
+  newcode += board[savedx][savedy].charAt(1)
+  newcode += board[savedx][savedy].charAt(2)
+  newcode += 'p'
+  savedcolour[x].type = newcode
+  board[savedx][savedy] = newcode
+  backBoard()
+  printBoard()
+  if (turns % 2 == 1) {
+    if (checkifCheck(blackpieces, blackpieces[14].coordx, blackpieces[14].coordy)) {
+      console.log("Black is in check")
+      check = true
+    }
+  }
+  if (turns % 2 == 0) {
+    if (checkifCheck(whitepieces, whitepieces[14].coordx, whitepieces[14].coordy)) {
+      console.log("White is in check")
+      check = true
+  }
+}
+}
+
 function checkPieceRule(piece, x, y, newx, newy, colour) {
-  //console.log("Checking Rules")
+  if(rules == false){
+    return true
+  }
   xchange = newx - x
   ychange = newy - y
   if (xchange == 0 && ychange == 0) {
     return false
   }
-  console.log(colour[14], "yes")
+  if(whatPiece(x,y) != 'King'){
   if(colour[14].coordx == x || colour[14].coordy == y){
     revealcheck = true
   }
   if(Math.abs(colour[14].coordx - x) == Math.abs(colour[14].coordy - y)){
     revealcheck = true
   }
+}
   console.log(xchange, ychange)
   if (piece == "knight") {
     if ((Math.abs(xchange) == 2 && Math.abs(ychange) == 1) 
@@ -504,7 +638,6 @@ function checkPieceRule(piece, x, y, newx, newy, colour) {
       return true
     }
     else {
-      revealcheck = false
       return false
     }
   }
@@ -514,13 +647,11 @@ function checkPieceRule(piece, x, y, newx, newy, colour) {
       for (let i = 1; i < Math.abs(xchange); i++) {
         if (board[x + (i * (Math.sign(xchange)))][y + (i * (Math.sign(ychange)))] != " ") {
           clearspace = false
-          revealcheck = false
         }
       }
       return clearspace
     }
     else {
-      revealcheck = false
       return false
     }
   }
@@ -530,7 +661,6 @@ function checkPieceRule(piece, x, y, newx, newy, colour) {
       for (let i = 1; i < Math.abs(xchange + ychange); i++) {
         if (board[x + (i * (Math.sign(xchange)))][y + (i * (Math.sign(ychange)))] != " ") {
           clearspace = false
-          revealcheck = true
         }
       }
       if (clearspace == true) {
@@ -539,7 +669,6 @@ function checkPieceRule(piece, x, y, newx, newy, colour) {
         return clearspace
       }
     else {
-      revealcheck = true
       return false
     }
   }
@@ -567,10 +696,12 @@ function checkPieceRule(piece, x, y, newx, newy, colour) {
           stateChange(whitepieces, board[x][y], false, false)
           return true
         }
-        if (board[newx][newy - 1].charAt(0) == 'p' && blackpieces[board[newx][newy - 1].charAt(1) - 1].moved == true) {
+        if (board[newx][newy - 1].charAt(0) == 'p' && blackpieces[board[newx][newy - 1].charAt(1) - 1].moved == true && board[newx][newy -1].charAt(2)=='b') {
           stateChange(whitepieces, board[x][y], false, false)
           stateChange(whitepieces, board[newx][newy - 1], true)
+          if(!checking){
           board[newx][newy - 1] = ' '
+          }
           return true
         }
       }
@@ -580,61 +711,69 @@ function checkPieceRule(piece, x, y, newx, newy, colour) {
       if (y == 6) {
         if (xchange == 0 && ychange == -2) {
           if (board[newx][newy] == ' ' && board[newx][newy + 1]) {
-            stateChange(blackpieces, board[x][y], false, true)
+            stateChange(blackpieces, board[x][y], false, true)//double move
             return true
           }
         }
+      }
         if (xchange == 0 && ychange == -1) {
-          if (board[newx][newy] == ' ') {
+          if (board[newx][newy] == ' ') {//single move
             stateChange(blackpieces, board[x][y], false, false)
             return true
           }
         }
-        if (Math.abs(xchange) == 1 && ychange == -1) {
+        if (Math.abs(xchange) == 1 && ychange == -1) {//pawn taking
           if (board[newx][newy] != ' ') {
             stateChange(blackpieces, board[x][y], false, false)
             return true
           }
-          if (board[newx][newy + 1].charAt(0) == 'p' && whitepieces[board[newx][newy + 1].charAt(1) - 1].moved == true) {
+          if (board[newx][newy + 1].charAt(0) == 'p' && whitepieces[board[newx][newy + 1].charAt(1) - 1].moved == true && board[newx][newy + 1].charAt(2)=='w') {
             stateChange(blackpieces, board[x][y], false, false)
-            stateChange(whitepieces, board[newx][newy + 1], true)
+            stateChange(blackpieces, board[newx][newy + 1], true)
+            if(!checking){
             board[newx][newy + 1] = ' '
+            }
             return true
           }
         }
       }
-    }
-    revealcheck = false
     return false
   }
-  if (piece == "king") {
+  if (piece == "King") {
     if (Math.abs(xchange) <= 1 && Math.abs(ychange) <= 1) {
       if (colour = whitepieces) {
-        whitepieces[14].moved = true
+        stateChange(whitepieces, board[x][y], false, true)
       }
       else {
-        blackpieces[14].moved = true
+        stateChange(blackpieces, board[x][y], false, true)
       }
       return true
     }
-    if (xchange == -2) {
+    if (xchange == -2 && !check) {
       if (colour == whitepieces) {
         console.log(whitepieces[10].moved)
-        if (whitepieces[10].moved == false && whitepieces[14].moved == false) {
+        if (whitepieces[10].moved == false && whitepieces[14].moved == false && whitepieces[10].state == true) {
           if (board[1][0] == ' ' && board[2][0] == ' ') {
+            if(!checking){
             board[2][0] = board[0][0]
             board[0][0] = ' '
-            stateChange(whitepieces, board[x][y], false, true)
+            stateChange(whitepieces, board[2][0], false, true)
+            whitepieces[14].moved = true
+            }
             return true
           }
         }
       }
       if (colour == blackpieces) {
-        if (blackpieces[10].moved == false && blackpieces[14].moved == false) {
+        console.log(blackpieces[10])
+        if (blackpieces[10].moved == false && blackpieces[14].moved == false && blackpieces[10].state == true) {
           if (board[1][7] == ' ' && board[2][7] == ' ') {
+            if(!checking){
             board[2][7] = board[0][7]
             board[0][7] = ' '
-            stateChange(whitepieces, board[x][y], false, true)
+            stateChange(blackpieces, board[2][7], false, true)
+            blackpieces[14].moved = true
+            }
             return true
           }
         }
@@ -642,36 +781,40 @@ function checkPieceRule(piece, x, y, newx, newy, colour) {
     }
     if (xchange == 2 && !check) {
       if (colour == whitepieces) {
-        if (whitepieces[11].moved == false && whitepieces[14].moved == false) {
+        if (whitepieces[11].moved == false && whitepieces[14].moved == false && whitepieces[11].state == true) {
           if (board[6][0] == ' ' && board[5][0] == ' ' && board[4][0] == ' ') {
+            if(!checking){
             board[4][0] = board[7][0]
             board[7][0] = ' '
-
-            stateChange(blackpieces, board[x][y], false, true)
+            whitepieces[14].moved = true
+            stateChange(whitepieces, board[4][0], false, true)
+            }
             return true
           }
         }
       }
       if (colour == blackpieces) {
-        if (blackpieces[11].moved == false && blackpieces[14].moved == false) {
+        if (blackpieces[11].moved == false && blackpieces[14].moved == false && blackpieces[11].state == true) {
           if (board[4][7] == ' ' && board[5][7] == ' ' && board[6][7] == ' ') {
+            if(!checking){
             board[4][7] = board[7][7]
             board[7][7] = ' '
-            stateChange(blackpieces, board[x][y], false, true)
+            blackpieces[14].moved = true
+            stateChange(blackpieces, board[4][7], false, true)
+            }
             return true
           }
         }
       }
     }
   }
-  if (piece == "queen") {
+  if (piece == "Queen") {
     clearspace = true
     if (xchange == 0 ^ ychange == 0) {
       console.log("called")
       for (let i = 1; i <= Math.abs(xchange + ychange) - 1; i++) {
         if (board[x + (i * (Math.sign(xchange)))][y + (i * (Math.sign(ychange)))] != " ") {
           clearspace = false
-          revealcheck = true
         }
       }
       return clearspace
@@ -683,22 +826,22 @@ function checkPieceRule(piece, x, y, newx, newy, colour) {
         for (let i = 1; i <= Math.abs(xchange) - 1; i++) {
           if (board[x + (i * (Math.sign(xchange)))][y + (i * (Math.sign(ychange)))] != " ") {
             clearspace = false
-            revealcheck = true
           }
         }
         return clearspace
       }
       else {
-        revealcheck = false
         return false
       }
     }
   }
-  revealcheck = flase
   return false
 }
 
 function checkifCheck(colour, xcoord, ycoord) {
+  if(rules == false){
+    return false
+  }
   if (colour == whitepieces) {
     letter = 'w'
     letter2 = 'b'
@@ -707,12 +850,12 @@ function checkifCheck(colour, xcoord, ycoord) {
     letter = 'b'
     letter2 = 'w'
   }
-  //console.log(letter)
   console.log("checking for knight check")
   for (posx = 0; posx < 8; posx++) { //checks if king is in check by a horse
     if (xcoord + horsemoves[posx].x >= 0 && ycoord + horsemoves[posx].y >= 0
       && xcoord + horsemoves[posx].x <= 7 && ycoord + horsemoves[posx].y <= 7) {
       //console.log(board[xcoord + horsemoves[posx].x][ycoord + horsemoves[posx].y])
+      console.log(letter2)
       if (board[xcoord + horsemoves[posx].x][ycoord + horsemoves[posx].y].charAt(0) == 'k'
         && board[xcoord + horsemoves[posx].x][ycoord + horsemoves[posx].y].charAt(2) == letter2) {
         return true
@@ -730,11 +873,12 @@ function checkifCheck(colour, xcoord, ycoord) {
     while (!safehorizontal && xcoord + count <= 7 && xcoord + count >= 0) { //checks if king is in check by a rook or queen
       console.log("valid  " + count)
       console.log(board[xcoord + count][ycoord].charAt(0))
-      if (board[xcoord + count][ycoord].charAt(0) == 'r' ||
-        board[xcoord + count][ycoord].charAt(0) == 'Q' &&
-        board[xcoord + count][ycoord].charAt(2) == letter2) {
-        return true
-      }
+      if(board[xcoord + count][ycoord].charAt(2) == letter2){
+        if (board[xcoord + count][ycoord].charAt(0) == 'r' ||
+          board[xcoord + count][ycoord].charAt(0) == 'Q'){
+          return true
+        }
+    }
       console.log("At position", board[xcoord+ count][ycoord])
       if (board[xcoord + count][ycoord] != ' ' ) {
         safehorizontal = true //true if direction is blocked, so nothing can check
@@ -770,7 +914,6 @@ function checkifCheck(colour, xcoord, ycoord) {
     && ycoord + count <= 7 && ycoord + count >= 0 ){
       console.log(board[xcoord + count][ycoord + count], "piece")
       if(board[xcoord+ count][ycoord + count].charAt(2) == letter2){
-
       if (board[xcoord + count][ycoord + count].charAt(0) == 'b' || 
       board[xcoord + count][ycoord + count].charAt(0) == 'Q') {
           return true
@@ -778,19 +921,24 @@ function checkifCheck(colour, xcoord, ycoord) {
     }
       if(board[xcoord + count][ycoord + count] != ' '){
         safeBLeft = true
+        console.log('safe by left')
       }
       count+=direction
+      console.log(count)
     }
     count = direction
     while(!safeBRight && xcoord + count <= 7 && xcoord + count >= 0
     && ycoord - count <= 7 && ycoord - count >= 0 ){
       console.log(board[xcoord + count][ycoord - count], "piece")
-      if (board[xcoord + count][ycoord - count].charAt(0) == 'b' &&
-      board[xcoord + count][ycoord - count].charAt(2) == letter2) {
+      if(board[xcoord+ count][ycoord - count].charAt(2) == letter2){
+        if (board[xcoord + count][ycoord - count].charAt(0) == 'b' || 
+            board[xcoord + count][ycoord - count].charAt(0) == 'Q') {
           return true
+        }
       }
-      if(board[xcoord + count][ycoord + count] != ' '){
+      if(board[xcoord + count][ycoord - count] != ' '){
         safeBRight = true
+        console.log('safe by right')
       }
       count += direction
     }
@@ -823,62 +971,180 @@ function checkifCheck(colour, xcoord, ycoord) {
 }
 
 
+function findPossible(piece, colour, x, y){
+  checking = true
+  console.log('checking',checking)
+  if(colour == 'b'){
+    colourarray = blackpieces
+  }
+  else{
+    colourarray = whitepieces
+  }
+  if(turns%2 == 1){
+    if(colour == 'w'){
+    console.log('wrongside')
+    return false
+    }
+  }
+  if(turns%2 == 0){
+    if(colour == 'b'){
+    console.log('wrong side')
+    return false
+    }
+  }
+  for (let ax = 0; ax < 8; ax++) {
+    for (let ay = 0; ay < 8; ay++) {
+      if(board[ax][ay].charAt(2) != colour){
+        if(checkPieceRule(piece, x, y, ax, ay, colourarray)){//checks if the rules would allow the piece to move for every position on the board
+          let temp = board[x][y]//old position
+          let temp2 = board[ax][ay]//new position
+          board[ax][ay] = board[x][y]
+          board[x][y] = ' '
+          if (turns % 2 == 1){
+            console.log(board[ax][ay], '!!!!!!!!!!!!!!!!!!!!!')
+            if(board[ax][ay].charAt(0) !='K'){
+              if (!checkifCheck(blackpieces, blackpieces[14].coordx, blackpieces[14].coordy)) {//if move is possble, checks if it would result in check
+                ctx.fillStyle = 'green'
+                ctx.fillRect(ax*100 + offset +5,ay*100 + offsety+5,5,5)
+              }
+              else{
+                console.log("tries into check")
+                  }
+                }
+                else{
+                  console.log("checkign king")
+                  if(!checkifCheck(blackpieces, ax, ay)){
+                  ctx.fillStyle = 'green'
+                  ctx.fillRect(ax*100 + offset +5,ay*100 + offsety+5,5,5)
+                }
+              }
+            }
+            if (turns % 2 == 0) {
+              console.log(board[ax][ay], '!!!!!!!!!!!!!!!!!!!!!')
+              if(board[ax][ay].charAt(0)!='K'){
+                if (!checkifCheck(whitepieces, whitepieces[14].coordx, whitepieces[14].coordy)) {
+                  ctx.fillStyle = 'green'
+                  ctx.fillRect(ax*100 + offset+5 ,ay*100+ offsety+5 ,5,5)
+                }
+                else{
+                  console.log("tries into check")
+                  }
+                }
+                else{
+                  console.log("checkign king")
+                  if(!checkifCheck(whitepieces, ax, ay)){
+                  ctx.fillStyle = 'green'
+                  ctx.fillRect(ax*100 + offset +5,ay*100 + offsety+5,5,5)
+                }
+              }
+            }
+          board[x][y] = temp //resets origional position
+          board[ax][ay] = temp2
+        }
+      }
+    }
+  }
+  checking = false
+  console.log('checking',checking)
+}
+
+
+function saveboard(colour){
+  for(let j = 0;j<16;j++){
+    colour[j].state = false
+  }
+  for(let x = 0;x<8;x++){
+    for(let y = x;y<8;y++){
+      if(board[x][y] != ' '){
+        for(let j=0;j<16;j++){
+          if(colour[j].type == board[x][y]){
+            colour[j].state = true
+            colour[j].coordx = x
+            colour[j].coordy = y
+            colour[j].moved = false
+          }
+        }
+      }
+    }
+  }
+}
+
 //while (checkmate == false) {
-  if (clearboard == true) {
-    console.clear()
+  function clearboard(){
+    turns = 0;
     whitepieces = [];
     blackpieces = [];
     addAll(whitepieces, 0, 1)
     addAll(blackpieces, 7, 6)
-    for (x = 0; x <= board.length - 1; x++) {
-      for (y = 0; y <= board.length - 1; y++) {
+    for (let x = 0; x <= board.length - 1; x++) {
+      for (let y = 0; y <= board.length - 1; y++) {
         board[x][y] = ' '
       }
     }
+      fillBoard(whitepieces)
+      fillBoard(blackpieces)
+      if(!start){
+        backBoard()
+        printBoard()
+      }
+      start = false
+    }
 
-    fillBoard(whitepieces)
-    //console.log(whitepieces)
-    fillBoard(blackpieces)
-    clearboard = false
+    clearboard()
   
     pieceImages["black_bishop"] = new Image();
     pieceImages["black_bishop"].src = "./pieces/black_bishop.png";
+    pieceImages["black_bishop"].onload = checkLoaded;
   
-    pieceImages["black_king"] = new Image();
-    pieceImages["black_king"].src = "./pieces/black_king.png";
+    pieceImages["black_King"] = new Image();
+    pieceImages["black_King"].src = "./pieces/black_king.png";
+    pieceImages["black_King"].onload = checkLoaded;
   
     pieceImages["black_knight"] = new Image();
     pieceImages["black_knight"].src = "./pieces/black_knight.png";
-  
+    pieceImages["black_knight"].onload = checkLoaded;
+
     pieceImages["black_pawn"] = new Image();
     pieceImages["black_pawn"].src = "./pieces/black_pawn.png";
-  
-    pieceImages["black_queen"] = new Image();
-    pieceImages["black_queen"].src = "./pieces/black_queen.png";
-  
+    pieceImages["black_pawn"].onload = checkLoaded;
+    
+    pieceImages["black_Queen"] = new Image();
+    pieceImages["black_Queen"].src = "./pieces/black_queen.png";
+    pieceImages["black_Queen"].onload = checkLoaded;
+
     pieceImages["black_rook"] = new Image();
     pieceImages["black_rook"].src = "./pieces/black_rook.png";
-  
+    pieceImages["black_rook"].onload = checkLoaded;
+    
     pieceImages["white_bishop"] = new Image();
     pieceImages["white_bishop"].src = "./pieces/white_bishop.png";
-  
-    pieceImages["white_king"] = new Image();
-    pieceImages["white_king"].src = "./pieces/white_king.png";
-  
+    pieceImages["white_bishop"].onload = checkLoaded;
+
+    pieceImages["white_King"] = new Image();
+    pieceImages["white_King"].src = "./pieces/white_king.png";
+    pieceImages["white_King"].onload = checkLoaded;
+
     pieceImages["white_knight"] = new Image();
     pieceImages["white_knight"].src = "./pieces/white_knight.png";
-  
+    pieceImages["white_knight"].onload = checkLoaded;
+    
     pieceImages["white_pawn"] = new Image();
     pieceImages["white_pawn"].src = "./pieces/white_pawn.png";
-  
-    pieceImages["white_queen"] = new Image();
-    pieceImages["white_queen"].src = "./pieces/white_queen.png";
-  
+    pieceImages["white_pawn"].onload = checkLoaded;
+
+    pieceImages["white_Queen"] = new Image();
+    pieceImages["white_Queen"].src = "./pieces/white_queen.png";
+    pieceImages["white_Queen"].onload = checkLoaded;
+
     pieceImages["white_rook"] = new Image();
     pieceImages["white_rook"].src = "./pieces/white_rook.png";
-  
-  
-    setTimeout(backBoard, printBoard,  100);
-    //}
-    //movePiece()
-  }
+    pieceImages["white_rook"].onload = checkLoaded;
+
+    
+    function checkLoaded() {
+      loadedImages++;
+      if (loadedImages == 12) {
+        backBoard();
+        printBoard();
+      }
+    }

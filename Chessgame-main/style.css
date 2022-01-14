@@ -1,19 +1,18 @@
-html{
-    overflow-x: hidden;
-}
 body {
     font-family: 'Oswald', sans-serif;
-    background-color: #575757;
+    background: #252424;
 }
 
 .header {
     text-align: center;
     color:aliceblue;
-    background-image: -moz-radial-gradient(#858585,#b6b6b6);
-    background-image: linear-gradient(90deg,#000000,#242424);
+    background-image: linear-gradient(0deg,#111111,#252424);
+}
+.options{
+    text-align: start;
 }
 .buttons{
-    text-align: start;
+    text-align: end;
 }
 .board{
     width: 100%;
@@ -21,4 +20,9 @@ body {
 }
 .chessboard{
     display: inline;
+}
+
+html{
+    overflow-x: hidden;
+    overflow-y: hidden;
 }
