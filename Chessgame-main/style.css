@@ -1,0 +1,28 @@
+body {
+    font-family: 'Oswald', sans-serif;
+    background: #252424;
+}
+
+.header {
+    text-align: center;
+    color:aliceblue;
+    background-image: linear-gradient(0deg,#111111,#252424);
+}
+.options{
+    text-align: start;
+}
+.buttons{
+    text-align: end;
+}
+.board{
+    width: 100%;
+    text-align: center;
+}
+.chessboard{
+    display: inline;
+}
+
+html{
+    overflow-x: hidden;
+    overflow-y: hidden;
+}
